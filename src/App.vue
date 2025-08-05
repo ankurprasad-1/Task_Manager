@@ -14,7 +14,7 @@ APP Vue
       @delete-board="deleteBoard"
       @add-list="addList"
     />
-    <!--displaying current board options and contents-->
+    <!-- Display the current board's columns -->
     <div v-if="boards[currentBoardIndex] && boards[currentBoardIndex].columns.length > 0" class="board">
       <Column
         v-for="(column, index) in filteredColumns"
@@ -26,9 +26,11 @@ APP Vue
         @update-column-title="(newTitle) => updateColumnTitle(index, newTitle)"
         @delete-list="deleteList"
       />
-      <!-- displaying columns with cards-->
+      <!-- Display the column components -->
     </div>
-
+    <div v-else class="loading-state">
+      Loading your board...
+    </div>
     <CardDetail
       v-if="isDetailViewVisible"
       :card="selectedCard"
@@ -37,11 +39,20 @@ APP Vue
   </div>
 </template>
 
-<script>
-import Column from './components/Column.vue';
-import TopBar from './components/TopBar.vue';
-import CardDetail from './components/CardDetail.vue';
-//defualting contents if nothing else in local storage
+<script setup>
+import { ref, watch, onMounted, computed } from 'vue'
+import Column from './components/Column.vue'
+import TopBar from './components/TopBar.vue'
+import CardDetail from './components/CardDetail.vue'
+
+// reactive variables
+const searchText = ref('')
+const boards = ref([])
+const currentBoardIndex = ref(0)
+const isDetailViewVisible = ref(false);
+const selectedCard = ref(null);
+
+// default board data w/o local storage
 const initialBoardData = {
   title: 'Kanban Template',
   columns: [
@@ -89,136 +100,131 @@ const initialBoardData = {
       ]
     }
   ]
-};
+}
+//acctive board based on current index of board
+const activeBoard = computed(() => boards.value[currentBoardIndex.value]);
 
-export default {
-  name: 'App',
-  components: {
-    Column,
-    TopBar,
-    CardDetail
-  },
-  data() {
-    return {
-      // intial board data
-      searchText: '',
-      boards: [],
-      currentBoardIndex: 0,
-      isDetailViewVisible: false,
-      selectedCard: null
-    };
-  },
-  computed: {
-    activeBoard() {
-      return this.boards[this.currentBoardIndex];
-    },
-
-    //filtred columns based on search
-    filteredColumns() {
-      const currentColumns = this.activeBoard?.columns || [];
-      const query = this.searchText.trim();// not whitspace 
-
-      if (!query) {//if no query don't search
-        return currentColumns;
-      }
-
-      try {
-        const regex = new RegExp(query, 'i');// case sensitive esarch
-        return currentColumns.map(column => ({
-          ...column,// spread operator to column copy
-          cards: column.cards.filter(card => regex.test(card.title) || regex.test(card.text))
-        }));
-
-      } catch (error) {
-        console.error("Invalid regex search query:", error);
-        //defaults to no search filtering if error 
-        return currentColumns;
-      }
-    }
-  },
-  watch: {// watching for changes
-    activeBoard: {
-      handler: 'saveBoard',
-    }
-  },
-  methods: {
-    saveBoard() {
-      if (this.activeBoard) {
-        localStorage.setItem('trelloBoard', JSON.stringify(this.activeBoard));
-      }
-    },
-    createBoard() {
-      const newBoard = {// default contenst for a new board
-        title: 'New Board',
-        columns: [
-          { title: 'List 1', cards: [] }, { title: 'List 2', cards: [] },
-          { title: 'List 3', cards: [] }, { title: 'List 4', cards: [] },
-          { title: 'List 5', cards: [] }
-        ]
-      };
-      this.boards.push(newBoard);// if new board then the index is latest
-      this.currentBoardIndex = this.boards.length - 1;
-    },
-    addList() {
-      if (this.activeBoard?.columns) {// if there is a current board then contenst for a new list
-        this.activeBoard.columns.push({ title: 'New List', cards: [] });
-      }
-    },
-    deleteList(columnIndex) {// delete the list if more than one column
-      if (this.activeBoard?.columns.length > 1) {
-        this.activeBoard.columns.splice(columnIndex, 1);
-      }
-    },
-    switchBoard(index) {// switching to board based on index if only there is a board
-      if (index >= 0 && index < this.boards.length) {
-        this.currentBoardIndex = index;
-      }
-    },
-    deleteBoard(index) {//updates index if current board if dleted 
-      if (this.boards.length > 1) {
-        this.boards.splice(index, 1);
-        this.currentBoardIndex = 0;
-      }
-    },
-    updateBoardTitle(newTitle) {// updates title of the current board
-      if (this.boards[this.currentBoardIndex]) {
-        this.boards[this.currentBoardIndex].title = newTitle;
-      }
-    },
-    updateColumnCards(columnIndex, newCards) {
-      if (this.activeBoard?.columns[columnIndex]) {
-        this.activeBoard.columns[columnIndex].cards = newCards;
-      }
-      // save updated board to local storage
-    },
-    updateColumnTitle(columnIndex, newTitle) {
-      if (this.activeBoard?.columns[columnIndex]) {
-        this.activeBoard.columns[columnIndex].title = newTitle;
-      }
-      // save updated board to local storage
-    },
-    updateSearchText(newText) {
-      this.searchText = newText;
-      // search text to local storage
-    }
-  },
-  mounted() {//lifecycle hook to load initial board data
-    const storedBoard = localStorage.getItem('trelloBoard');
-    if (storedBoard) {
-      try {
-        const parsedBoard = JSON.parse(storedBoard);
-        this.boards = (parsedBoard?.columns) ? [parsedBoard] : [initialBoardData];
-        // current board index is set to 0
-      } catch (error) {
-        console.error("Error parsing board from localStorage:", error);
-        this.boards = [initialBoardData];
-      }
-    } else {
-      this.boards = [initialBoardData];
-    }
-    this.saveBoard();
+// function to save the active board to local storage
+function saveBoard() {
+  if (activeBoard.value) {
+    localStorage.setItem('trelloBoard', JSON.stringify(activeBoard.value));
   }
-};
+}
+
+// default board when creating a new board
+function createBoard() {
+  const newBoard = {
+    title: 'New Board',
+    columns: [
+      { title: 'List 1', cards: [] }, { title: 'List 2', cards: [] },
+      { title: 'List 3', cards: [] }, { title: 'List 4', cards: [] },
+      { title: 'List 5', cards: [] }
+    ]
+  }
+  boards.value.push(newBoard)
+  currentBoardIndex.value = boards.value.length - 1
+  //board index value becomes last board in array
+}
+
+// Function to add a new column
+function addList() {
+  if (activeBoard.value?.columns) {
+    activeBoard.value.columns.push({ title: 'New List', cards: [] });
+  }
+}
+
+// delete a column
+function deleteList(columnIndex) {
+  if (activeBoard.value?.columns.length > 1) {
+    activeBoard.value.columns.splice(columnIndex, 1);
+  }
+}
+
+// switch the active board
+function switchBoard(index) {
+  if (index >= 0 && index < boards.value.length) {
+    //if index greater than 0 => valid index
+    currentBoardIndex.value = index
+  }
+}
+
+// Function to delete the current board
+function deleteBoard(index) {
+  if (boards.value.length > 1) {
+    boards.value.splice(index, 1)
+    //update current board index
+    currentBoardIndex.value = 0
+  }
+}
+
+// Function to update the title of the current board
+function updateBoardTitle(newTitle) {
+  if (boards.value[currentBoardIndex.value]) {
+    boards.value[currentBoardIndex.value].title = newTitle;
+  }
+}
+
+// Function to update the cards in a specific column
+function updateColumnCards(columnIndex, newCards) {
+  if (boards.value[currentBoardIndex.value]?.columns[columnIndex]) {
+    boards.value[currentBoardIndex.value].columns[columnIndex].cards = newCards;
+  }
+}
+
+// Update the title of a specific column
+function updateColumnTitle(columnIndex, newTitle) {
+  if (boards.value[currentBoardIndex.value]?.columns[columnIndex]) {
+    boards.value[currentBoardIndex.value].columns[columnIndex].title = newTitle;
+  }
+}
+
+function updateSearchText(newText) {
+  searchText.value = newText;
+}
+
+// Computed property to filter columns based on search text using regex
+const filteredColumns = computed(() => {
+  const currentColumns = boards.value[currentBoardIndex.value]?.columns || [];
+  const query = searchText.value.trim();
+
+  if (!query) {//no query no filtering
+    return currentColumns;
+  }
+
+  try {//else using regex search
+    const regex = new RegExp(query, 'i');//case sensitive search
+    return currentColumns.map(column => ({
+      ...column,//copying column 
+      cards: column.cards.filter(card => regex.test(card.title) || regex.test(card.text))
+    }));
+
+
+  } catch (error) {
+    console.error("Invalid regex search query:", error);
+    return currentColumns;//retrun the original colums if regex fails
+  }
+});
+
+// Load the board from local storage when the component is mounted
+onMounted(() => {
+  const storedBoard = localStorage.getItem('trelloBoard')
+  if (storedBoard) {
+    try {
+      const parsedBoard = JSON.parse(storedBoard);
+      boards.value = (parsedBoard?.columns) ? [parsedBoard] : [initialBoardData];
+    } 
+    catch (error) {//use intial board data if there is an error
+      console.error("Error parsing board from localStorage:", error);
+      boards.value = [initialBoardData];
+    }
+  } else {
+    boards.value = [initialBoardData]
+  }
+  saveBoard();// save board to local storage
+})
+
+// 
+watch(activeBoard, saveBoard, { deep: true });
 </script>
 
 <style lang="scss" scoped>

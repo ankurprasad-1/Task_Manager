@@ -38,7 +38,7 @@
       
       <template #item="{ element: card, index: i }">
         <div class="card-wrapper" @click="emit('show-card-detail', card)">
-          <div class="card" :style="{ backgroundColor: card.color }">
+          <div class="card" :style="{ backgroundColor: card.color || 'white' }">
 
 
             <div v-if="card.priority" class="priority-indicator" :class="card.priority.toLowerCase()"></div>
@@ -119,7 +119,7 @@
           ]"
           @click="newCardPriority = option.value"
         >
-            <!--assigning values for card based on priorty, defaults to lower case and none if nothing selected -->
+            <!--assigning values for card based on priorty -->
           {{ option.text }}
         </button>
       </div>
@@ -163,216 +163,226 @@
   </div>
 </template>
 
-<script>
-import draggable from 'vuedraggable';
-
-export default {
-  name: 'Column',
-  components: {
-    draggable,
+<script setup>
+import { ref, watch, nextTick, computed } from 'vue'
+import draggable from 'vuedraggable'
+//return types
+const props = defineProps({
+  title: String,
+  initialCards: {   type: Array,
+    required: true
   },
-  props: {//declaring types
-    title: String,
-    initialCards: {
-      type: Array,
-      required: true,
-    },
-    columnIndex: Number,
-  },
+  columnIndex: Number
+})
 
-  //default is false unless changed 
-  emits: ['update-cards', 'update-column-title', 'delete-list', 'show-card-detail'],
-  data() {
-    return {
-      isTitleEditing: false,
-      editedTitle: '',
-      isAdding: false,
-      newCardTitle: '',
-      newCardText: '',
-      newCardColor: 'white',
-      newCardImage: null,
-      newImagePreviewUrl: null,
-      isDragOver: false,//no dragging 
-      newCardTime: null,
-      newCardPriority: null,
-      filter: { open: false },
-      sortFilter: null,
-      availableColors: ['white', 'orange', 'lightblue', 'lightgreen', 'plum'],
-      priorityOptions: [
-        { text: 'None', value: null },
-        { text: 'Low', value: 'Low' },
-        { text: 'Medium', value: 'Medium' },
-        { text: 'High', value: 'High' },
-        //converting text options into values for prioirty sorting 
-      ],
-    };
-  },
-  computed: {
-    sortedCards() {
-      if (!this.sortFilter) {
-        return this.initialCards;
-      }
-      return [...this.initialCards].sort((a, b) => {
-        if (this.sortFilter === 'time') { // Renamed for clarity
-          const timeA = a.time;
-          const timeB = b.time;
-            if (!timeA && !timeB) return 0; // only if they are equal
-            if (!timeA) return 1;          //if A does not exist than B is grater
-            if (!timeB) return -1;      // if B does not exist then A is greater
+const emit = defineEmits(['update-cards', 'update-column-title', 'delete-list', 'show-card-detail'])
 
-           return timeA.localeCompare(timeB);
+
+//all default values are set to false 
+const isTitleEditing = ref(false)
+const editedTitle = ref('')
+const isAdding = ref(false)
+const newCardTitle = ref('')
+const newCardText = ref('')
+const newCardColor = ref('white') //default value for color of card
+const newCardImage = ref(null);
+const newImagePreviewUrl = ref(null);
+const isDragOver = ref(false);
+const newCardTime = ref(null);
+const newCardPriority = ref(null);
+const filter = ref({ open: false });
+const sortFilter = ref(null);
+
+const availableColors = ['white', 'orange', 'lightblue', 'lightgreen', 'plum'];
+const priorityOptions = [
+  { text: 'None', value: null },
+  { text: 'Low', value: 'Low' },
+  { text: 'Medium', value: 'Medium' },
+  { text: 'High', value: 'High' },
+];
+//assigning values of low,medium and high based on th input text seleted 
+
+// Watch the title prop to keep the local editedTitle in sync
+watch(() => props.title, (newTitle) => {
+  editedTitle.value = newTitle;
+}, { immediate: true });
+
+async function enableTitleEdit() {
+  //using async function to only change the function once 
+  isTitleEditing.value = true;
+  await nextTick();
+  const inputtitle = document.querySelector('.column-title-input');
+  // query selector to find first element with class column-title-input
+  if (inputtitle) {
+    inputtitle.focus();
+  }
 }
-        if (this.sortFilter === 'priority') {
-          const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1, 'None': 0, null: 0 };
-          const priorityA = priorityOrder[a.priority] || 0;
-          const priorityB = priorityOrder[b.priority] || 0;
-          //defaults to 0 if no perioity is assinged in the case of "null"
-          return priorityB - priorityA;
-        }
-        return 0;
-      });
-    },
-  },
-  watch: {//watching for chagnes in title
-    title: {
-      handler(newTitle) {
-        this.editedTitle = newTitle;
-      },
-      immediate: true,
-    },
-  },
-  methods: {
-    async enableTitleEdit() {
-      this.isTitleEditing = true;
-      await this.$nextTick();
-      //await for DOM to update
-      const inputtitle = document.querySelector('.column-title-input');
-      //query for input title
-      if (inputtitle) {
-        inputtitle.focus();
-      }
-    },
-    saveTitle() {
-      if (this.editedTitle.trim() !== '' && this.editedTitle !== this.title) {
-        this.$emit('update-column-title', this.editedTitle.trim());
-      }
-      //event to update column title
-      this.isTitleEditing = false;
-    },
-    sortByDueDate() {
-      this.sortFilter = 'dueDate';
-      this.filter.open = false;
-      //closes after sorting 
-    },
-    sortByPriority() {
-      this.sortFilter = 'priority';
-      this.filter.open = false;
-      //closes after sorting
-    },
-    formatTime(timeString) {
-      if (!timeString) return '';
-      const [hours, minutes] = timeString.split(':').map(Number);
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      const formattedHours = hours % 12 || 12;
-      const formattedMinutes = minutes < 10 ? '0' + minutes : minutes;
-      return `${formattedHours}:${formattedMinutes} ${ampm}`;
-      //converting time from string to AM/PM format using dorp down
-    },
-    addCard() {//defaults to nothing
-      if (!this.newCardTitle.trim()) return;
-      const newCards = [...this.initialCards];
-      newCards.push({
-        title: this.newCardTitle.trim(),
-        text: this.newCardText.trim() || '',
-        image: this.newCardImage ? this.newCardImage : null,
-        color: this.newCardColor,
-        time: this.newCardTime,
-        priority: this.newCardPriority,
-        isEditing: false,
-        editedTitle: '',
-        editedText: '',
-      });
-      //adding new card to the column
-      this.emitUpdateCards(newCards);
-      this.newCardTitle = '';
-      this.newCardText = '';
-      this.newCardColor = 'white';
-      this.newCardImage = null;
-      this.newImagePreviewUrl = null;
-      this.newCardTime = null;
-      this.newCardPriority = null;
-      this.isAdding = false;
-    },
-    //if user clicks cancel nothing chnages
-    cancelAdd() {
-      this.newCardTitle = '';
-      this.newCardText = '';
-      this.newCardColor = 'white';
-      this.newCardImage = null;
-      this.newImagePreviewUrl = null;
-      this.newCardTime = null;
-      this.newCardPriority = null;
-      this.isAdding = false;
-    },
-    //enables the edit mode for the card
-    enableEdit(card) {
-      card.isEditing = true;
-      card.editedTitle = card.title;
-      card.editedText = card.text;
-    },
-    saveEdit(card) {
-      //if nothing in thte tilte or card thean can't save
-      card.title = card.editedTitle.trim();
-      card.text = card.editedText.trim();
-      card.isEditing = false;
-      this.emitUpdateCards(this.initialCards);
-    },
-    cancelEdit(card) {
-      card.isEditing = false;
-    },// if user clicks cancel then nothing is saved
 
-    deleteCard(index) {
-      const newCards = [...this.initialCards];
-      newCards.splice(index, 1);
-      this.emitUpdateCards(newCards);
-    },
-    //elte card updates the index values 
-    NewImageUpload(event) {
-      const file = event.target.files[0];
-      if (file) {
-        this.newCardImage = URL.createObjectURL(file);
-        this.newImagePreviewUrl = URL.createObjectURL(file);
-      }// creates a preview of the image, simple
-    },
-    imageDrop(event) {
-      this.isDragOver = false;
-      const file = event.dataTransfer.files[0];
-      if (file && file.type.startsWith('image/')) {
-        this.NewImageUpload({ target: { files: [file] } });
-      }
-    },
-    clearImage() {
-      this.newCardImage = null;
-      this.newImagePreviewUrl = null;
-    },
-    //if image is uploaded then shown else nothing
-    getImagePath(image) {
-      return image;
-    },
+function saveTitle() {
+  if (editedTitle.value.trim() !== '' && editedTitle.value !== props.title) {
+    emit('update-column-title', editedTitle.value.trim());//no whietspace at end
+  }
+  isTitleEditing.value = false;
+}
 
-    //truncate text so that only 100 characters are shown
-    truncatedText(text) {
-      const maxLength = 100;
-      if (text && text.length > maxLength) {
-        return text.substring(0, maxLength) + '...';
-      }
-      return text;
-    },
-    emitUpdateCards(newCards) {
-      this.$emit('update-cards', newCards);
-    },
-  },
-};
+const sortedCards = computed(() => {
+  if (!sortFilter.value) {
+    return props.initialCards;
+  }
+
+  return [...props.initialCards].sort((a, b) => {
+    //using spread operator to create a new array for sorting 
+   if (sortFilter.value === 'time') {
+      const timeA = a.time;
+      const timeB = b.time;
+      
+      if (!timeA && !timeB) return 0; // If both are null, they are equal
+      if (!timeA) return 1;          // not defined goes at the end
+      if (!timeB) return -1;         // undefined goes at the end
+      
+      return timeA.localeCompare(timeB); //
+    }
+
+    if (sortFilter.value === 'priority') {
+      const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1, 'None': 0, null: 0 };
+      const priorityA = priorityOrder[a.priority] || 0;
+      const priorityB = priorityOrder[b.priority] || 0;
+      //need to operate around "no value for priority when selected"
+      return priorityB - priorityA;
+    }
+    
+    return 0;
+  });
+});
+
+function sortByDueDate() {
+  sortFilter.value = 'dueDate';
+  filter.value.open = false;
+}
+
+function sortByPriority() {
+  sortFilter.value = 'priority';
+  filter.value.open = false;
+}
+
+//function for date of the cad
+function formatTime(timeString) {
+  if (!timeString) return '';
+  const [hours, minutes] = timeString.split(':').map(Number);
+  //storing into array
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const formattedHours = hours % 12 || 12;
+  const formattedMinutes = minutes < 10 ? '0' + minutes : minutes;
+  //if less than 10 minutes than it will be "0" + X
+  return `${formattedHours}:${formattedMinutes} ${ampm}`;
+}
+
+function addCard() {
+  if (!newCardTitle.value.trim()) return//string value
+  const newCards = [...props.initialCards];//
+  newCards.push({//new values
+    title: newCardTitle.value.trim(),
+    text: newCardText.value.trim() || '',
+    image: newCardImage.value ? newCardImage.value : null,
+    color: newCardColor.value,
+    time: newCardTime.value,
+    priority: newCardPriority.value,
+    isEditing: false,
+    editedTitle: '',
+    editedText: ''
+  });
+  //default false
+  emitUpdateCards(newCards);
+  newCardTitle.value = ''
+  newCardText.value = ''
+  newCardColor.value = 'white'
+  newCardImage.value = null;
+  newImagePreviewUrl.value = null;
+  newCardTime.value = null;
+  newCardPriority.value = null;
+  isEditing.value = false
+}
+
+//default false
+function cancelAdd() {
+  newCardTitle.value = ''
+  newCardText.value = ''
+  newCardColor.value = 'white'
+  newCardImage.value = null;
+  newImagePreviewUrl.value = null;
+  newCardTime.value = null;
+  newCardPriority.value = null;
+  isAdding.value = false
+}
+
+//default false
+function enableEdit(card) {
+  card.isEditing = true
+  card.editedTitle = card.title
+  card.editedText = card.text
+}
+
+//default false
+function saveEdit(card) {
+  card.title = card.editedTitle.trim()
+  card.text = card.editedText.trim()
+  card.isEditing = false
+  emitUpdateCards(props.initialCards);
+}
+
+//default false
+function cancelEdit(card) {
+  card.isEditing = false
+}
+
+//delete card, readjusts other cards to fit order
+function deleteCard(index) {
+  const newCards = [...props.initialCards];
+  newCards.splice(index, 1);
+  emitUpdateCards(newCards);
+}
+
+//handleing new image upload via local preview too
+function NewImageUpload(event) {
+  const file = event.target.files[0];
+  if (file) {
+    newCardImage.value = URL.createObjectURL(file); 
+    newImagePreviewUrl.value = URL.createObjectURL(file);
+  }
+}
+
+//when card dragged image still remains the same  
+function imageDrop(event) {
+  isDragOver.value = false;
+  const file = event.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+  NewImageUpload({ target: { files: [file] } });
+  }
+}
+
+//makes default value false
+function clearImage() {
+  newCardImage.value = null;
+  newImagePreviewUrl.value = null;
+}
+
+function getImagePath(image) {
+  return image;
+}
+
+//truncate text so that only 100 characters are shown
+function truncatedText(text) {
+  const maxLength = 100;
+  if (text && text.length > maxLength) {
+    return text.substring(0, maxLength) + '...';
+  }
+  return text;
+}
+
+function emitUpdateCards(newCards) {
+  emit('update-cards', newCards);
+}
+
 </script>
 
 <style lang="scss">

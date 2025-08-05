@@ -12,61 +12,52 @@
 </template>
 
 <!-- javascript Board.vue -->
-<script>
-import Column from './Column.vue';
+<script setup>
+import { ref, watch } from 'vue'
+import Column from './Column.vue'
 
-export default {
-  name: 'TaskBoard',
-  components: {
-    Column,
-  },
-  data() {
-    const localStorageKey = 'taskBoardData';
-    const storedData = localStorage.getItem(localStorageKey);
-    
-    return {
-      localStorageKey: localStorageKey,
-      columns: storedData ? JSON.parse(storedData) : [
-        {
-          title: 'List 1',
-          cards: [],
-          backgroundColor: ''
-        },
-        {
-          title: 'List 2',
-          cards: [],
-          backgroundColor: ''
-        },
-        {
-          title: 'List 3',
-          cards: [],
-          backgroundColor: ''
-        },
-        {
-          title: 'List 4',
-          cards: [],
-          backgroundColor: ''
-        }
-      ]
-    };
-  },
-  watch: {
-    columns: {
-      // when update in the columns 
-      handler(updatedColumns) {
-        localStorage.setItem(this.localStorageKey, JSON.stringify(updatedColumns));
-      },
-      deep: true//tracks changes in nested 
+const localStorageKey = 'taskBoardData';
+
+const storedData = localStorage.getItem(localStorageKey);
+const columns = ref(
+  //use local storage else defualt columns
+  storedData ? JSON.parse(storedData) : [
+    {
+      title: 'List 1',
+      cards: [],
+      backgroundColor: ''
+    },
+    {
+      title: 'List 2',
+      cards: [],
+      backgroundColor: ''
+    },
+    {
+      title: 'List 3',
+      cards: [],
+      backgroundColor: ''
+    },
+    {
+      title: 'List 4',
+      cards: [],
+      backgroundColor: ''
     }
-  },
-  methods: {
-    changeColumnColor(columnIndex, newColor) {
-      if (this.columns[columnIndex]) {
-        this.columns[columnIndex].backgroundColor = newColor;
-      }
-    }
+  ]
+);
+
+watch(columns, (updadtecolumns) => {
+  localStorage.setItem(localStorageKey, JSON.stringify(updadtecolumns));
+}, { deep: true });
+// watch for changes in column and update local storage
+function LocalStorage() {
+  localStorage.setItem(localStorageKey, JSON.stringify(columns.value));
+}
+// update local sotrage on column change
+function changeColumnColor(columnIndex, newColor) {
+  if (columns.value[columnIndex]) {
+    columns.value[columnIndex].backgroundColor = newColor;
   }
-};
+}
 </script>
 
 <style scoped lang="scss">

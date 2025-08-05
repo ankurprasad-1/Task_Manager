@@ -13,17 +13,16 @@
 </template>
 
 <!--Javascript-->
-<script>
-export default {
-  props: {
-    card: {
-      type: Object,
-      required: true
-    }
-  }
-};
-</script>
+<script setup>
+import { defineProps } from 'vue'
 
+const props = defineProps({
+  card: {
+    type: Object,
+    required: true
+  }
+})
+</script>
 
 <style lang="scss">
 @import '../../assets/notecard.scss';

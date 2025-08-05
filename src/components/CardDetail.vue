@@ -1,11 +1,13 @@
 <template>
-  <div class="detail-overlay" @click.self="$emit('close')">
+  <div class="detail-overlay" @click.self="emit('close')">
     <div class="detail-content">
       <div class="detail-header">
-        <h3 class="detail-title">{{ card.title }}</h3>
+        <h1 class="detail-title">{{ card.title }}</h1>
       </div>
 
-      <div class="detail-body">        
+      <div class="detail-body">
+        <p class="detail-description">{{ card.text }}</p>
+        
         <div class="detail-info">
           <div v-if="card.priority" class="detail-priority">
             <span class="priority-label-text">Priority:</span>
@@ -22,29 +24,27 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'CardDetail',
-  props: {
-    card: {
-      type: Object,
-      required: true,
-    },
+<script setup>
+import { defineProps, defineEmits, computed } from 'vue';
+
+const props = defineProps({
+  card: {
+    type: Object,
+    required: true,
   },
-  emits: ['close'],
-  computed: {
-    formattedTime() {
-      if (!this.card.time) return '';
-      const [hours, minutes] = this.card.time.split(':').map(Number);
-      //map the string to a number
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      //makes it into a AM or PM format
-      const formattedHours = hours % 12 || 12;
-      const formattedMinutes = minutes < 10 ? '0' + minutes : minutes;
-      return `${formattedHours}:${formattedMinutes} ${ampm}`;
-    },
-  },
-};
+});
+
+const emit = defineEmits(['close']);
+
+
+const formattedTime = computed(() => {
+  if (!props.card.time) return '';
+  const [hours, minutes] = props.card.time.split(':').map(Number);
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const formattedHours = hours % 12 || 12;
+  const formattedMinutes = minutes < 10 ? '0' + minutes : minutes;
+  return `${formattedHours}:${formattedMinutes} ${ampm}`;
+});
 </script>
 
 <style lang="scss" scoped>

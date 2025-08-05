@@ -93,7 +93,7 @@
 <!--Javascript setup-->
 <script setup>
 import { ref, defineProps, defineEmits, watch, nextTick, computed } from 'vue'
-
+//
 const props = defineProps({
   boardTitle: String,
   boards: Array,
@@ -102,7 +102,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update-board-title', 'update:searchText', 'create-board', 'switch-board', 'delete-board', 'add-list'])
-
 const showBoardMenu = ref(false)
 const isTitleEditing = ref(false)
 const editedTitle = ref('')
@@ -110,20 +109,23 @@ const editedTitle = ref('')
 const currentBoardTitle = computed(() => {
   return props.boardTitle;
 });
+//computed property to get board title
 
 watch(() => props.boardTitle, (newTitle) => {
   if (!isTitleEditing.value) {
     editedTitle.value = newTitle;
   }
 });
+//watch for changes in board title, if so then new title 
 
 async function TitleEdit() {
   isTitleEditing.value = true;
   editedTitle.value = props.boardTitle; // set editedTitle to current boardTitle
   await nextTick();
-  const inputEl = document.querySelector('.board-title-input');
-  if (inputEl) {
-    inputEl.focus();
+  //nexttick for DOM updating, allows for input to be updating accordingly
+  const input = document.querySelector('.board-title-input');
+  if (input) {
+    input.focus();
   }
 }
 
