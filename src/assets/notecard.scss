@@ -1,0 +1,37 @@
+.card {
+  background: white;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid #ccc;
+}
+
+.uploaded-image {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  margin-top: 0.5rem;
+  border-radius: 0.25rem;
+  display: block;
+}
+
+.image-container {
+  width: 100%;
+  overflow: hidden;
+}
+
+.card-content {
+  padding: 0.75rem;
+}
+
+.card-content h3 {
+  font-size: 1.1rem;
+  margin: 0;
+  font-weight: 600;
+  color: #172b4d;
+}
+
+.card-content p {
+  font-size: 0.95rem;
+  color: #5d6a81;
+  margin-top: 0.25rem;
+}

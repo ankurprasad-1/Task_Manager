@@ -1,0 +1,11 @@
+.board-background {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 1rem;
+  padding: 1rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-height: 100vh;
+  max-width: 100vw;
+  box-sizing: border-box;
+}

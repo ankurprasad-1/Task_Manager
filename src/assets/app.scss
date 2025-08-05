@@ -1,0 +1,15 @@
+.app-container {
+  background: linear-gradient(to bottom, #0460e9, #0065ff);
+  min-height: 100vh;
+
+  .board {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    margin: 0 auto;
+    max-width: 100rem;
+    overflow-x: auto;
+  }
+}
